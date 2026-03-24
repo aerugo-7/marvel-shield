@@ -12,30 +12,49 @@ import time
 
 # --- 1. 全局 UI 风格定义 (神盾局战略级标准) ---
 st.set_page_config(page_title="SHIELD 战略分析系统", layout="wide")
+# 找到 st.set_page_config(...)，在下面粘贴：
+# 1. 强制声明为中文并禁止翻译插件
+st.markdown('<html lang="zh-CN" class="notranslate"></html>', unsafe_allow_html=True)
+st.markdown('<meta name="google" content="notranslate">', unsafe_allow_html=True)
+st.markdown('<html lang="zh-CN"></html>', unsafe_allow_html=True)
 
+st.markdown('<html lang="zh-CN" class="notranslate"></html>', unsafe_allow_html=True)
+
+# 1. 极其强力的禁翻译指令（防止出现“多伦多”并解决报错）
+st.markdown("""
+    <head>
+        <meta name="google" content="notranslate">
+        <style>
+            /* 强制全网页禁止翻译 */
+            .notranslate { translate: no !important; }
+        </style>
+    </head>
+    <html lang="zh-CN" class="notranslate"></html>
+""", unsafe_allow_html=True)
+
+# 2. UI 样式优化
 st.markdown("""
     <style>
     /* 基础背景 */
     .stApp { background-color: #050a10; color: #ffffff !important; }
-    [data-testid="stSidebar"] { background-color: #08101a; border-right: 2px solid #00ffcc; }
     
-    /* 搜索框与下拉列表：强制白底黑字，无死角覆盖 */
-    div[data-baseweb="select"] { background-color: #ffffff !important; color: #000000 !important; border-radius: 4px; }
-    div[data-baseweb="select"] * { color: #000000 !important; }
-    div[data-baseweb="popover"] * { background-color: #ffffff !important; color: #000000 !important; }
-    ul[role="listbox"] { background-color: #ffffff !important; }
-    li[role="option"] { background-color: #ffffff !important; color: #000000 !important; }
-    li[role="option"]:hover { background-color: #00ffcc !important; }
+    /* 侧边栏：恢复为您喜欢的深黑/深蓝风格 */
+    [data-testid="stSidebar"] { background-color: #08101a !important; border-right: 2px solid #00ffcc; }
+    [data-testid="stSidebar"] * { color: #ffffff !important; }
 
-    /* 高亮度文字 */
-    p, span, label, li { color: #ffffff !important; font-size: 1.1rem !important; font-weight: 500 !important; }
-    h1, h2, h3 { color: #00ffcc !important; font-weight: bold !important; border-bottom: 2px solid #1f2937; padding-bottom: 10px; }
+    /* 搜索框与下拉列表：保持白底黑字，确保输入时看清 */
+    div[data-baseweb="select"] { background-color: #FFFFFF !important; border-radius: 5px !important; }
+    div[data-baseweb="select"] * { color: #000000 !important; font-weight: bold !important; }
+    div[role="listbox"] { background-color: #FFFFFF !important; }
+    div[role="option"] { background-color: #FFFFFF !important; color: #000000 !important; }
+    div[role="option"]:hover { background-color: #00ffcc !important; }
 
-    /* 指标卡 */
-    .stMetric { background: #0d1624; border: 2px solid #3b82f6; border-radius: 8px; padding: 15px; }
+    /* 文字与标题 */
+    p, span, label { color: #ffffff !important; font-size: 1.1rem !important; }
+    h1, h2, h3 { color: #00ffcc !important; font-weight: bold !important; }
     
-    /* 档案卡 */
-    .hero-card { border: 2px solid #3b82f6; padding: 25px; border-radius: 15px; background: rgba(13, 22, 36, 0.95); margin-top: 10px; }
+    /* 提示框美化 */
+    .stAlert { background-color: rgba(0, 255, 204, 0.1) !important; color: #ffffff !important; border: 1px solid #00ffcc !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -89,7 +108,7 @@ elif module == "🔍 英雄档案检索":
 
     st.info("📑 **档案解读说明**：\n"
             "1. **风险评估**：这是由算法计算出的“战略破坏潜力”。它量化了该英雄一旦失踪或叛变，对整个社交平衡造成的冲击力。5分以上即为战略级目标，8分以上为必须严密监控的核心枢纽。\n"
-            "2. **五维雷达**：名望代表社交广度；外交代表连接不同圈子的能力；忠诚代表其朋友圈中同阵营角色的占比。\n"
+            "2. **五维雷达图解析**：：\n"
             "名望：代表社交面的广度（认识多少人）。\n"
             "外交：代表在互不认识的圈子之间“穿针引线”的能力。\n"
             "忠诚：代表朋友圈里“自己人”（同阵营）的比例。分值越高，圈子越纯粹。\n"
@@ -142,95 +161,78 @@ elif module == "🔍 英雄档案检索":
         for e in sub_G.edges():
             net.add_edge(e[0], e[1], color="#334155")
         
-        # 解决 Windows 路径与 React 冲突
-        temp_html = os.path.join(path, "temp_render_view.html")
-        net.save_graph(temp_html)
-        components.html(open(temp_html, 'r', encoding='utf-8').read(), height=620)
-
-# --- 模块 3：稳定性演习 ---
+# 1. 使用容器包裹绘图区域，确保 DOM 结构稳定
+        with st.container():
+            # 解决 Windows/Linux 路径兼容
+            temp_html = os.path.join(path, "temp_render_view.html")
+            net.save_graph(temp_html)
+            
+            # 2. 关键点：增加固定的 key="hero_network_view"
+            # 这能告诉浏览器：不管选哪个英雄，这个组件的位置是固定的，不要乱删节点
+            with open(temp_html, 'r', encoding='utf-8') as f:
+                html_data = f.read()
+            
+            with st.container():
+                components.html(html_data, height=620)# --- 模块 3：稳定性演习 ---
 elif module == "💀 稳定性演习":
     st.title("💀 宇宙瓦解压力模拟")
+    st.info("🔬 **实验目的：测试漫威宇宙的社交韧性**\n\n"
+            "本模块通过数学模拟，测试当英雄们失踪后，漫威社交网络的“完整性”变化：\n"
+            "1. **为什么损毁度通常极低？**：漫威英雄之间存在海量的“备用连接”。例如你删除了美队，但钢铁侠依然认识美队的所有朋友。这种冗余设计保护了宇宙，即使随机消失几百人，剩下的幸存者依然能集结，这叫“社交韧性”。\n"
+            "2. **斩首行动的致命性**：若精准抹除那些“顶级领袖”，虽然总人数变化小，但系统内部沟通的效率会遭受毁灭性打击。\n")
 
-    # 1. 实验目的说明
-    st.info("""
-    **🔬 实验目的：漫威宇宙在极端灾难下会瓦解吗？**
-    
-    本模块通过数学模拟，测试当英雄们失踪后，漫威社交网络的“完整性”变化：
-    
-    1. **为什么损毁度通常极低？**：漫威英雄之间存在海量的“备用连接”。例如你删除了美队，但钢铁侠依然认识美队的所有朋友。这种冗余设计保护了宇宙，即使随机消失几百人，剩下的幸存者依然能集结，这叫“社交韧性”。
-    2. **斩首行动的致命性**：若精准抹除那些“顶级领袖”，虽然总人数变化小，但系统内部沟通的效率会遭受毁灭性打击。
-    """)
-    
-    # 2. 设置交互区域
+    # 初始化运行状态
+    if 'sim_run' not in st.session_state:
+        st.session_state.sim_run = False
+
+    # 输入区域
     col_x, col_y = st.columns(2)
     with col_x:
-        attack_mode = st.radio("请选择灾难模拟模式：", ["定向斩首行动 (指定抹除核心英雄)", "灭霸的响指 (随机大规模湮灭)"], key="sim_mode_fixed")
+        attack_mode = st.radio("模拟模式：", ["定向斩首", "灭霸响指"], key="sim_radio")
     with col_y:
         if "定向" in attack_mode:
-            targets = st.multiselect("请在下方搜索并锁定抹除目标：", hero_list, default=[hero_list[0]], key="sim_targets_fixed")
-            eng_targets = [name_to_eng.get(t) for t in targets]
+            targets = st.multiselect("选择目标：", hero_list, default=[hero_list[0]], key="sim_targets")
         else:
-            num_rm = st.slider("请调整随机消失的人数比例：", 10, 500, 100, key="sim_slider_fixed")
+            num_rm = st.slider("随机消失人数：", 10, 500, 100, key="sim_slider")
 
-    # 3. 模拟逻辑
-    if st.button("🚀 启动模拟分析程序", key="sim_btn_fixed"):
-        # 创建一个空容器用于放置结果，防止 React 渲染报错
-        result_container = st.container()
+    # 点击按钮只改变状态，不直接渲染
+    if st.button("🚀 启动模拟分析", key="sim_start_btn"):
+
+        G_sim = G_full.copy()
+        initial_size = 6399 
         
-        with result_container:
-            G_sim = G_full.copy()
-            initial_size = 6399 
+        if "定向" in attack_mode:
+            eng_targets = [name_to_eng.get(t) for t in targets]
+            hubs = ["CAPTAIN AMERICA", "IRON MAN/TONY STARK ", "SPIDER-MAN/PETER PARKER"]
+            is_hub_hit = any(t in hubs for t in eng_targets)
+            G_sim.remove_nodes_from(eng_targets)
+            target_desc = ", ".join(targets)
+        else:
+            import random
+            nodes_to_rm = random.sample(list(G_sim.nodes()), num_rm)
+            G_sim.remove_nodes_from(nodes_to_rm)
+            is_hub_hit = num_rm > 300
+            target_desc = f"{num_rm} 名随机英雄"
             
-            if "定向" in attack_mode:
-                hubs = ["CAPTAIN AMERICA", "IRON MAN/TONY STARK ", "SPIDER-MAN/PETER PARKER", "THOR/ORINSSON"]
-                is_hub_hit = any(t in hubs for t in eng_targets)
-                G_sim.remove_nodes_from(eng_targets)
-                target_str = ", ".join(targets)
-            else:
-                import random
-                nodes_to_rm = random.sample(list(G_sim.nodes()), num_rm)
-                G_sim.remove_nodes_from(nodes_to_rm)
-                is_hub_hit = num_rm > 300
-                target_str = f"{num_rm} 名随机超人类"
-                
-            final_size = len(max(nx.connected_components(G_sim), key=len))
-            loss = (initial_size - final_size) / initial_size * 100
-            
-            st.write(f"### 模拟报告：已成功从时空中抹除 {target_str}")
-            
-            # 仪表盘：使用静态 key 防止 removeChild 报错
-            fig_loss = go.Figure(go.Indicator(
-                mode="gauge+number", 
-                value=loss, 
-                title={'text': "系统结构损毁率 (%)"}, 
-                gauge={'bar': {'color': "#ff4b4b"}, 'axis': {'range': [0, 100]}}
-            ))
-            fig_loss.update_layout(paper_bgcolor='rgba(0,0,0,0)', font_color="white", height=300)
-            st.plotly_chart(fig_loss, use_container_width=True, key="sim_gauge_fixed")
-            
-            st.write("---")
-            st.write("### 🔍 情报局深度评估结论")
-            
-            # 方案A：损毁极小
-            if loss < 0.5:
-                st.success("""
-                📊 **评估结果：惊人的社交韧性！**
-                
-                实验证明，漫威宇宙展现出极强的冗余抗性。幸存英雄之间的联系密度极高，个体的离去无法阻碍大部队的联通。这个系统像互联网一样，部分节点的失效无法撼动宇宙的社交骨架。
-                """)
-            
-            # 方案B：精准打击了领袖
-            elif is_hub_hit:
-                st.warning("""
-                ⚠️ **评估结果：发生结构性震荡！**
-                
-                警告！你移除的是网络的“核心枢纽”。虽然剩下的英雄大部分还连在一起，但他们之间沟通的“步数”大幅增加。系统变得极度疲劳和脆弱，正处于大分裂的边缘。
-                """)
-            
-            # 方案C：损毁很大
-            else:
-                st.error(f"""
-                🚨 **评估结果：系统凝聚力实质性受损！**
-                
-                关键结论：最大英雄群体的规模已显著缩减（当前规模：{final_size}人）。这意味着宇宙中出现了大量无法被联络到的“孤岛英雄”，社交秩序已经失控，宇宙正在分崩离析。
-                """)
+        final_size = len(max(nx.connected_components(G_sim), key=len))
+        loss = (initial_size - final_size) / initial_size * 100
+        
+        # 结果容器
+        st.write("---")
+        st.subheader(f"📊 模拟报告：{target_desc} 已移除")
+        
+        # 仪表盘：使用完全静态的 key
+        fig_loss = go.Figure(go.Indicator(
+            mode="gauge+number", value=loss, 
+            title={'text': "系统瓦解率 (%)"}, 
+            gauge={'bar': {'color': "#ff4b4b"}}
+        ))
+        fig_loss.update_layout(paper_bgcolor='rgba(0,0,0,0)', font_color="white", height=300)
+        st.plotly_chart(fig_loss, use_container_width=True, key="unique_gauge_fixed_999")
+        
+        if loss < 0.5:
+            st.success("📊 **评估结果：惊人的社交韧性！**\n\n漫威宇宙通过复杂的备用人脉保持连通。个体的离去无法摧毁宇宙的社交骨架。")
+        elif is_hub_hit:
+            st.warning("⚠️ **评估结果：发生结构性震荡！**\n\n警告！你移除的是关键枢纽。系统沟通路径大幅增加，宇宙正处于分裂边缘。")
+        else:
+            st.error(f"🚨 **评估结果：系统凝聚力受损！**\n\n最大群体缩减至 {final_size}人。宇宙正在分崩离析。")
